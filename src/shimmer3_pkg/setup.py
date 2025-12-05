@@ -28,7 +28,8 @@ setup(
         'console_scripts': [
             'shimmer3_node = shimmer3_pkg.shimmer3_node:main',
             'data_processing = shimmer3_pkg.data_processing:main',
-            'csv_writer = shimmer3_pkg.csv_writer:main',
+            # 'csv_writer = shimmer3_pkg.csv_writer:main',
+            'raw_ppg_logger = shimmer3_pkg.csv_writer:main',
             'bpm_detector_node = shimmer3_pkg.bpm_detector:main',
             'matplotter_node = shimmer3_pkg.matplotter_node:main',
         ],},)

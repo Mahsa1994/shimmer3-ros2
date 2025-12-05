@@ -66,6 +66,16 @@ def generate_launch_description():
         output='screen',
         condition=IfCondition(LaunchConfiguration("liveplot"))
         )
+    raw_ppg_logger_node = Node(
+        package='shimmer3_pkg',
+        executable='raw_ppg_logger',   # the ROS2 executable name of your CSV logger
+        name='raw_ppg_logger',
+        output='screen',
+        parameters=[{
+            'chunk_length': 128  # same chunk length if needed
+        }]
+)
+
 
     return LaunchDescription([
         # Arguments
@@ -82,4 +92,5 @@ def generate_launch_description():
         shimmer3_node,
         bpm_detector_node,
         matplotter_node,
+        raw_ppg_logger_node,
         ])

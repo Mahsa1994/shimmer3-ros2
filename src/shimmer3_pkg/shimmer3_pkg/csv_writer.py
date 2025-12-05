@@ -20,7 +20,8 @@ class RawPPGLogger(Node):
 
         # Path
         home_dir = os.path.expanduser("~")
-        csv_path = os.path.join(home_dir, "ros2_ws", "src", "shimmer3_pkg", "ppg.csv")
+        # csv_path = os.path.join(home_dir, "ros2_ws", "src", "shimmer3_pkg", "ppg.csv")
+        csv_path = os.path.join("/shimmer3/src/shimmer3_pkg", "ppg.csv")
         self.csv_file = open(csv_path, mode='w', newline='') # w: writemode, newline: create new rows
         self.csv_writer = csv.writer(self.csv_file)
 
