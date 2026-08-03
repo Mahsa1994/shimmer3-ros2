@@ -22,8 +22,9 @@
 
 # Basic Code Structure
 `start.py`
-- Tests Bluetooth connection
-- Checks for existing shimmer3 Docker container and starts existing or builds and runs new one. You are now inside the container.
+- Tests Bluetooth connection (skips rebinding if `/dev/rfcomm0` already exists)
+- Auto-detects the USB serial device (`/dev/ttyACM*`, falling back to `/dev/ttyUSB*`)
+- Removes any existing `shimmer3` container, then builds and runs a fresh one with host networking (`--net=host`, `--ipc=host`, `--pid=host`) and the detected devices attached. You are now inside the container.
 
 `shimmer3.launch.py`
 - Configures launch parameters and other default constants 
@@ -69,6 +70,8 @@ sdptool browse <MAC-ADDRESS>
 *Establish Bluetooth Connection, and build and run Docker Container*
 
 The Dcont is built including `-v $(pwd)/src:/shimmer3/src \`, mounting the `src` folder on the host's computer to the Dcont's running `src` folder, so any edits made to files in that folder (packages) will be reflected and updated.
+
+Every run of `start.py` removes any existing `shimmer3` container and starts a fresh one, so only changes under `src/` persist between runs.
 ```
 python3 start.py
 ```
