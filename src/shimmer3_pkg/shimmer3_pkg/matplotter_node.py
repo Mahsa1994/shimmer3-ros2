@@ -58,7 +58,6 @@ class MatPlotterNode(Node):
         # self.ax.set_xlim(current_time - self.window_size, current_time) # Something like this could save computation time compared to relim and autoscaling
         self.ax.figure.canvas.draw()
         self.ax.figure.canvas.flush_events()
-        plt.pause(0.001)
 
 def main(args=None):
     rclpy.init(args=args)
