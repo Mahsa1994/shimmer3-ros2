@@ -1,4 +1,0 @@
-heartpy
-numpy
-rclpy
-setuptools

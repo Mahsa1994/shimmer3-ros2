@@ -1,4 +1,0 @@
-[console_scripts]
-csv_writer = shimmer3_pkg.csv_writer:main
-data_processing = shimmer3_pkg.data_processing:main
-shimmer3_node = shimmer3_pkg.shimmer3_node:main
