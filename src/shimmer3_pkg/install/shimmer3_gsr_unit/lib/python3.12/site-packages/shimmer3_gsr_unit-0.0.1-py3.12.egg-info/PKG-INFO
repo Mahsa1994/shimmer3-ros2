@@ -1,7 +1,0 @@
-Metadata-Version: 2.1
-Name: shimmer3-gsr-unit
-Version: 0.0.1
-Summary: it is to read the biosignals of the shimmer3 gsr unit.
-Maintainer: Wonse Jo
-Maintainer-email: wonsu0513@gmail.com
-License: Apache License 2.0
