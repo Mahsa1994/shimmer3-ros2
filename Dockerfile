@@ -29,7 +29,7 @@ RUN python3 -m venv /opt/venv
 RUN /bin/bash -c "source /opt/venv/bin/activate && \
     python3 -m pip install --no-cache-dir \
     pyqt5 \
-    setuptools \
+    'setuptools<81' \
     heartpy \
     pyserial \
     pyyaml"
