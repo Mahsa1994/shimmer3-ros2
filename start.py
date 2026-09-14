@@ -82,6 +82,7 @@ def build_run():
             --net=host \
             --ipc=host \
             --pid=host \
+            --cap-add=NET_ADMIN \
             --device /dev/rfkill \
             --device {host_device}:/dev/ttyUSB0 \
             --device {DEVICE_NODE} \
