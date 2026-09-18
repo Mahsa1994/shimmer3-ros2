@@ -38,27 +38,40 @@ class ros2_shimmer3(Node):
         print(f"Device_Name: {self.Parm_Device_Name}")
         try:
             WAIT_SEC = 2
+            attempt = 0
+            # FIXED 2026-09-18: this loop only caught subprocess.CalledProcessError
+            # (which the `syst()`/os.system() calls never actually raise), not
+            # serial.SerialException - the real, common failure when the RFCOMM
+            # link is dead or refused. That exception was escaping straight to
+            # the outer `except serial.SerialException` below, ending the
+            # connection attempt after a SINGLE try instead of actually
+            # retrying like the loop structure implies. Also now closes the
+            # serial handle before retrying, so a failed attempt doesn't leave
+            # the port held open and compound "multiple access on port" style
+            # failures on the next try.
             while True:
+                attempt += 1
                 try:
-                    print("releasing")
                     syst("sudo rfcomm release 0") # release rfcomm0
-                    print("released")
                     syst(f"sudo rfcomm bind 0 {bt_addr} {str(self.Parm_Channel_Number)}")
-                    print("binded")
-                    syst(f"sudo chmod a+rw {self.Parm_Device_Name}") # (ch)ange (mod)e and let (a)ll users (r)ead or (w)rite to device  
-                    print("chmoded")
+                    syst(f"sudo chmod a+rw {self.Parm_Device_Name}") # (ch)ange (mod)e and let (a)ll users (r)ead or (w)rite to device
                     self.ser = serial.Serial(self.Parm_Device_Name, 115200, timeout=1) # open port
                     self.ser.write(b'\x07') # trigger data stream
                     time.sleep(WAIT_SEC)
                     data = self.ser.read(100) # read arbitrary 100B of data
-                    if data: 
+                    if data:
                         print(f"{bt_addr} connection successful on channel {self.Parm_Channel_Number} and rfcomm port device {self.Parm_MAC_Addr} in container <CONTAINER_NAME>!")
                         break # if the read data exists, success!
-                except subprocess.CalledProcessError as e:
-                    print(f"Command failed: {e}")
-                    # ser = None
-                    return 1
-                print("Connection unsuccessful, trying again")
+                except (subprocess.CalledProcessError, serial.SerialException) as e:
+                    print(f"Connection attempt {attempt} failed: {e}")
+                    if getattr(self, 'ser', None) is not None:
+                        try:
+                            self.ser.close()
+                        except Exception:
+                            pass
+                        self.ser = None
+                print(f"Connection unsuccessful (attempt {attempt}), trying again")
+                time.sleep(1)
 
             self.ser.flushInput()
             self.get_logger().info("port opening, done.")

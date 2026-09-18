@@ -34,26 +34,48 @@ def find_serial_device():
         sys.exit(1)
 
 def bind_connect_shimmer3():
-    while True:
-        device_node_exists= os.path.exists('/dev/rfcomm0')
+    # FIXED 2026-09-18 (three bugs found live-debugging a stuck connection):
+    # 1. Used to skip straight to the Docker stage if /dev/rfcomm0 merely
+    #    EXISTED, without verifying it was actually a live connection - a
+    #    stale device node (e.g. left over from a previous failed attempt)
+    #    looked identical to a working one and got trusted outright. Now
+    #    always does a fresh release+bind+read-verify cycle, every call.
+    # 2. Only caught subprocess.CalledProcessError, which `run()`'s plain
+    #    subprocess.run() (no check=True) never actually raises anyway - a
+    #    real serial.SerialException from a dead connection (the actual
+    #    common failure mode) went uncaught and crashed the whole script.
+    # 3. No bound on retries, and no cleanup of the serial handle between
+    #    failed attempts - could leak a held-open port across retries,
+    #    compounding "multiple access on port" style failures.
+    MAX_ATTEMPTS = 5
+    for attempt in range(1, MAX_ATTEMPTS + 1):
+        print(f"Connecting to {BT_ADDR} (attempt {attempt}/{MAX_ATTEMPTS})...")
+        ser = None
         try:
-            if not device_node_exists:
-                print(f"Device node {DEVICE_NODE} does not exist yet. Binding now...")
-                run("sudo rfcomm release 0")
-                run(f"sudo rfcomm bind 0 {BT_ADDR} {str(CHANNEL)}")
-                run(f"sudo chmod a+rw {DEVICE_NODE}")
-                ser = serial.Serial(DEVICE_NODE, 115200, timeout=1)
-                ser.write(b'\x07')
-                time.sleep(WAIT_SEC)
-                data = ser.read(100)
-                if data:
-                    print(f"Bluetooth: {BT_ADDR} connection outside of '{CONTAINER_NAME}' container successful!")
-                    break
-            else:
-                print(f"Device node {DEVICE_NODE} already exists. Moving onto Docker stage...")
-                break
-        except subprocess.CalledProcessError as e:
-            print(f"Command failed: {e}")
+            run("sudo rfcomm release 0")
+            run(f"sudo rfcomm bind 0 {BT_ADDR} {str(CHANNEL)}")
+            run(f"sudo chmod a+rw {DEVICE_NODE}")
+            ser = serial.Serial(DEVICE_NODE, 115200, timeout=1)
+            ser.write(b'\x07')
+            time.sleep(WAIT_SEC)
+            data = ser.read(100)
+            if data:
+                print(f"Bluetooth: {BT_ADDR} connection outside of '{CONTAINER_NAME}' container successful!")
+                ser.close()
+                return
+        except (subprocess.CalledProcessError, serial.SerialException) as e:
+            print(f"Connection attempt {attempt} failed: {e}")
+        finally:
+            if ser is not None and ser.is_open:
+                ser.close()
+        print("Connection unsuccessful, trying again")
+        time.sleep(1)
+
+    print(f"ERROR: could not establish a Bluetooth connection to {BT_ADDR} "
+          f"after {MAX_ATTEMPTS} attempts. Check the sensor is powered on, "
+          f"in range, and not already connected elsewhere "
+          f"(try: bluetoothctl info {BT_ADDR}) before retrying.")
+    sys.exit(1)
 
 def build_run():
     # 1. Find the actual device name (e.g., /dev/ttyACM0 or /dev/ttyACM1)
@@ -100,8 +122,14 @@ def build_run():
         syst(docker_cmd)
 
 if __name__ == "__main__":
-    # Remove old container to ensure new settings (network + device) are applied
-    os.system(f"docker rm -f {CONTAINER_NAME} > /dev/null 2>&1")
-
+    # NOTE: previously did an unconditional `docker rm -f` here "to ensure
+    # new settings (network + device) are applied" - but that made
+    # build_run()'s own container_exists reuse logic dead code, forcing a
+    # full rebuild+recreate every run. Removed so the container (and
+    # anything built inside it, e.g. session state) persists across runs.
+    # If you deliberately change docker_cmd's flags/devices in build_run()
+    # and need them to actually take effect, manually run
+    # `docker rm -f shimmer3` once yourself before the next start.py run -
+    # reusing an existing container does NOT pick up new docker run flags.
     bind_connect_shimmer3()
     build_run()
