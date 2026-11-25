@@ -55,8 +55,7 @@ class BPMDetectorNode(Node):
         ppg_data = np.array(self.ppg_buffer, dtype=float)
         try:
             wd, m = hp.process(ppg_data, SAMPLERATE) # wd: working data, m: measures
-            wd['peaklist_t'] = [idx / SAMPLERATE for idx in wd['peaklist']]
-            bpm_list = self.get_hr(wd['peaklist_t'])
+            bpm_list = self.get_hr(wd['peaklist']) # peak positions in samples
             bpm = bpm_list[-1] if bpm_list else 0.0
             self.bpm_buffer.append(bpm)
             return bpm
@@ -80,7 +79,10 @@ class BPMDetectorNode(Node):
         rr_time = [rd / SAMPLERATE for rd in rr_dist]  # in seconds
         bpm_list = []
         for rd in rr_time:
-            candidate = (1.0 / rd)
+            # FIXED 2026-11-25: was 1.0 / rd with peak times already in
+            # seconds divided by SAMPLERATE again, i.e. SAMPLERATE/RR instead
+            # of 60/RR - every /live_bpm read 50.03/60 = 0.834x the true rate.
+            candidate = 60.0 / rd # beats per minute
             bpm_diff = candidate - self.last_bpm
             if self.last_bpm != 0 and abs(bpm_diff) > self.hrv_limit:
                 # self.get_logger().info(f"bpm_diff: {bpm_diff}")
